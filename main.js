@@ -266,10 +266,19 @@ function rerenderUI(state) {
   // render goals
   ReactDOM.render(
     appState.goals.map(goal => {
+      const firstIncompleteClauseIdx = goal.pattern.eventClauses.findIndex(
+        ec => !hasBinding(goal, ec.eventLvar)
+      );
       return e("div", {className: "goal"},
         e("div", {className: "goal-title", key: -1}, goal.pattern.name),
         goal.pattern.eventClauses.map((clause, clauseIdx) => {
-          return e("div", {className: "goal-part", key: clauseIdx}, clause.where.join(" "))
+          const complete = clauseIdx < firstIncompleteClauseIdx;
+          return e("div", {
+              className: "goal-part" + (complete ? " complete" : ""),
+              key: clauseIdx
+            },
+            clause.where.join(" ")
+          );
         })
       );
     }),
