@@ -143,13 +143,21 @@ function initAppState() {
 initAppState();
 
 function refreshSuggestions() {
-  const allSuggestions = getAllPossibleActions(appState.db);
+  const allSuggestions = shuffle(getAllPossibleActions(appState.db));
   for (const suggestion of allSuggestions) {
     const nextDB = addEvent(appState.db, suggestion);
     suggestion.db = nextDB;
+    // figure out how this suggestion would update author goals if accepted
+    // (TODO unify this logic with the logic used below in the pickSuggestion UI effect handler)
+    suggestion.goalUpdates = [];
+    const latestEventID = newestEID(suggestion.db);
+    for (const goal of appState.goals) {
+      const possibleGoalUpdates = tryAdvance(goal, suggestion.db, "", latestEventID);
+      suggestion.goalUpdates = suggestion.goalUpdates.concat(possibleGoalUpdates);
+    }
   }
-  // TODO sort by whether/how each suggestion advances active goals
-  // (this part is gonna be complicated i think)
+  // sort by whether/how each suggestion advances active goals (FIXME improve this)
+  allSuggestions.sort((a, b) => b.goalUpdates.length - a.goalUpdates.length);
   appState.suggestions = allSuggestions;
   appState.suggestionsCursor = 0;
 }
@@ -272,7 +280,7 @@ function rerenderUI(state) {
       return e("div", {className: "goal"},
         e("div", {className: "goal-title", key: -1}, goal.pattern.name),
         goal.pattern.eventClauses.map((clause, clauseIdx) => {
-          const complete = clauseIdx < firstIncompleteClauseIdx;
+          const complete = goal.lastStep === "complete" || clauseIdx < firstIncompleteClauseIdx;
           return e("div", {
               className: "goal-part" + (complete ? " complete" : ""),
               key: clauseIdx

@@ -26,6 +26,19 @@ function randNth(items) {
   return items[Math.floor(Math.random()*items.length)];
 }
 
+// Return a shuffled copy of a list, leaving the original list unmodified.
+function shuffle(items) {
+  const newItems = [];
+  for (let i = 0; i < items.length; i++) {
+    newItems.push(items[i]);
+  }
+  for (let i = newItems.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newItems[i], newItems[j]] = [newItems[j], newItems[i]];
+  }
+  return newItems;
+}
+
 /// DataScript util functions
 
 // Given the DB, return the EID of the most recently added entity.
