@@ -44,6 +44,10 @@ function getAllCharIDPairs(db) {
                         :where [?c1 "type" "char"] [?c2 "type" "char"] [(not= ?c1 ?c2)]]`, db);
 }
 
+function getCharName(db, id) {
+  return datascript.q(`[:find ?n . :where [${id} "type" "char"] [${id} "name" ?n]]`, db);
+}
+
 function getAllPossibleActions(db) {
   const allPossibleActions = [];
   const charIDPairs = getAllCharIDPairs(db);
@@ -166,8 +170,10 @@ function applyUIEffect(effect, params) {
     // add a new transcript entry for the new event
     const latestEventID = newestEID(appState.db);
     const latestEvent = getEntity(appState.db, latestEventID);
+    const actorName = getCharName(appState.db, suggestion.actor);
+    const targetName = getCharName(appState.db, suggestion.target);
     appState.transcriptEntries.push({
-      title: `${latestEvent.actor} ${latestEvent.eventType} ${latestEvent.target}`,
+      title: `${actorName} ${latestEvent.eventType} ${targetName}`,
       text: ""
     });
     // TODO update any goals that this suggestion advances/completes/cuts off
@@ -233,6 +239,8 @@ function rerenderUI(state) {
   ReactDOM.render(
     suggestions.map((suggestion, suggestionIdx) => {
       const absoluteSuggestionIdx = cursor + suggestionIdx;
+      const actorName = getCharName(state.db, suggestion.actor);
+      const targetName = getCharName(state.db, suggestion.target);
       return e("div", {
           className: "suggestion",
           key: suggestionIdx,
@@ -240,7 +248,7 @@ function rerenderUI(state) {
           onMouseEnter: ev => applyUIEffect("hoverSuggestion", {suggestion: absoluteSuggestionIdx}),
           onMouseLeave: ev => applyUIEffect("unhoverSuggestion", {})
         },
-        `${suggestion.actor} ${suggestion.eventType} ${suggestion.target}`
+        `${actorName} ${suggestion.eventType} ${targetName}`
       );
     }),
     document.getElementById("suggestions")
