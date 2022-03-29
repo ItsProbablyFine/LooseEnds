@@ -234,6 +234,7 @@ function rerenderUI(state) {
             "updateTranscriptEntryText",
             {entry: entryID, newText: ev.target.value}
           ),
+          placeholder: "Details here...",
           value: entry.text
         })
       );
