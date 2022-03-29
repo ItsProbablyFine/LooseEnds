@@ -134,9 +134,9 @@ let appState = {
 
 function initAppState() {
   for (let i = 0; i < appState.goals.length; i++) {
-    const rawGoal = appState.goals[i];
-    const compiledGoal = compilePattern(parse(rawGoal)[0]);
-    appState.goals[i] = compiledGoal;
+    const rawPattern = appState.goals[i];
+    const compiledPattern = compilePattern(parse(rawPattern)[0]);
+    appState.goals[i] = {pattern: compiledPattern, bindings: {}};
   }
 }
 
@@ -162,7 +162,6 @@ function applyUIEffect(effect, params) {
 
   // suggestion UI effects
   else if (effect === "pickSuggestion") {
-    console.warn("Unimplemented UI effect type", effect);
     // identify which suggestion we're trying to perform
     const suggestion = appState.suggestions[params.suggestion];
     // perform it, updating the DB with the resulting effects and new event
@@ -176,7 +175,16 @@ function applyUIEffect(effect, params) {
       title: `${actorName} ${latestEvent.eventType} ${targetName}`,
       text: ""
     });
-    // TODO update any goals that this suggestion advances/completes/cuts off
+    // update any goals that this suggestion advances/completes/cuts off
+    for (let i = 0; i < appState.goals.length; i++) {
+      const goal = appState.goals[i];
+      const possibleGoalUpdates = tryAdvance(goal, appState.db, "", latestEventID);
+      console.log("possibleGoalUpdates", possibleGoalUpdates);
+      const meaningfulUpdates = possibleGoalUpdates.filter(g => g.lastStep !== "pass");
+      if (meaningfulUpdates.length > 0) {
+        appState.goals[i] = meaningfulUpdates[0];
+      }
+    }
     // refresh suggestions based on new DB state
     refreshSuggestions();
   }
@@ -257,10 +265,9 @@ function rerenderUI(state) {
   // render goals
   ReactDOM.render(
     appState.goals.map(goal => {
-      console.log("goal", goal);
       return e("div", {className: "goal"},
-        e("div", {className: "goal-title", key: -1}, goal.name),
-        goal.eventClauses.map((clause, clauseIdx) => {
+        e("div", {className: "goal-title", key: -1}, goal.pattern.name),
+        goal.pattern.eventClauses.map((clause, clauseIdx) => {
           return e("div", {className: "goal-part", key: clauseIdx}, clause.where.join(" "))
         })
       );
