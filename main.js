@@ -260,6 +260,7 @@ const e = React.createElement;
 
 function rerenderUI(state) {
   // render transcript
+  const transcriptEntriesDiv = document.getElementById("transcript-entries");
   ReactDOM.render(
     state.transcriptEntries.map((entry, entryID) => {
       return e("div", {className: "entry", key: entryID},
@@ -275,8 +276,12 @@ function rerenderUI(state) {
         })
       );
     }),
-    document.getElementById("transcript-entries")
+    transcriptEntriesDiv
   );
+  // ...and scroll most recent entry into view if there are any entries
+  if (transcriptEntriesDiv.lastChild) {
+    transcriptEntriesDiv.lastChild.scrollIntoView();
+  }
 
   // render suggested actions
   const cursor = state.suggestionsCursor;
