@@ -272,26 +272,28 @@ function rerenderUI(state) {
   );
 
   // render goals
-  ReactDOM.render(
-    appState.goals.map(goal => {
-      const firstIncompleteClauseIdx = goal.pattern.eventClauses.findIndex(
-        ec => !hasBinding(goal, ec.eventLvar)
-      );
-      return e("div", {className: "goal"},
-        e("div", {className: "goal-title", key: -1}, goal.pattern.name),
-        goal.pattern.eventClauses.map((clause, clauseIdx) => {
-          const complete = goal.lastStep === "complete" || clauseIdx < firstIncompleteClauseIdx;
-          return e("div", {
-              className: "goal-part" + (complete ? " complete" : ""),
-              key: clauseIdx
-            },
-            clause.where.join(" ")
-          );
-        })
-      );
-    }),
-    document.getElementById("goals")
-  );
+  const goalElems = appState.goals.map(goal => {
+    const firstIncompleteClauseIdx = goal.pattern.eventClauses.findIndex(
+      ec => !hasBinding(goal, ec.eventLvar)
+    );
+    return e("div", {className: "goal"},
+      e("div", {className: "goal-title", key: -1}, goal.pattern.name),
+      goal.pattern.eventClauses.map((clause, clauseIdx) => {
+        const complete = goal.lastStep === "complete" || clauseIdx < firstIncompleteClauseIdx;
+        return e("div", {
+            className: "goal-part" + (complete ? " complete" : ""),
+            key: clauseIdx
+          },
+          clause.where.join(" ")
+        );
+      })
+    );
+  });
+  goalElems.push(e("div", {
+    className: "add-goal",
+    onClick: ev => applyUIEffect("addGoal", {})
+  }, "+"));
+  ReactDOM.render(goalElems, document.getElementById("goals"));
 }
 
 function initiallyRenderUI(state) {
