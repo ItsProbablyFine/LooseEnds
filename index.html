@@ -33,6 +33,13 @@
     height: 80vh;
     overflow-y: scroll;
   }
+  #dramatis-personae {
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+  #dramatis-personae .char-name {
+    font-variant: small-caps;
+  }
   #transcript .entry {
     margin-bottom: 1.5rem;
   }
@@ -169,6 +176,12 @@
   <main>
     <div id="transcript-container">
       <div id="transcript">
+        <div id="transcript-header">
+          <h3>Who is involved?</h3>
+          <div id="dramatis-personae"></div>
+          <h3>What has happened?</h3>
+        </div>
+        <div id="transcript-entries"></div>
         <!--
         <div class="entry">
           <p class="system-text">Bella discussed research ideas with Anya</p>

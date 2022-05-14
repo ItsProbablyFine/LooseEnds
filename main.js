@@ -119,17 +119,39 @@ function initializeDB() {
 
 /// UI state management
 
+const firstFiveChars = allCharNames.slice(0, 5);
+const allValues = ["cuteness", "humor", "minimalism", "radicalism", "seriousness", "sincerity"];
 let appState = {
   db: initializeDB(),
+  initialCharSituations: firstFiveChars.map(char => {
+    const doesValue = randNth(allValues);
+    const doesntValue = randNth(allValues.filter(v => v !== doesValue));
+    //const likeTarget = randNth(firstFiveChars.filter(tc => tc !== char));
+    //const dislikeTarget = randNth(firstFiveChars.filter(tc => tc !== char && tc !== likeTarget));
+    return {
+      name: char,
+      situations: [
+        randNth(["wowchair", "firebrand", "slacker", "sycophant", "worrier"]),
+        "appreciates " + doesValue,
+        "despises " + doesntValue
+        //"likes " + likeTarget,
+        //"dislikes " + dislikeTarget
+      ]
+    };
+  }),
   goals: [
     `(pattern establishRivalry
        (event ?e1 where tag: unfriendly, actor: ?c1, target: ?c2)
        (event ?e2 where tag: unfriendly, actor: ?c2, target: ?c1)
-       (event ?e3 where eventType: declareRivalry, actor: ?c1, target: ?c2))`
+       (event ?e3 where eventType: declareRivalry, actor: ?c1, target: ?c2))`,
+    `(pattern onARoll
+       (event ?e1 where tag: finishMajorWork, actor: ?c1)
+       (event ?e2 where tag: finishMajorWork, actor: ?c1)
+       (unless-event ?e3 where eventType: finishMajorWork, actor: ?c2, (not= ?c1 ?c2)))`
   ],
   suggestions: [],
   suggestionsCursor: 0,
-  transcriptEntries: [{title: "Foo", text: "Bar"}],
+  transcriptEntries: [],
 };
 
 function initAppState() {
@@ -253,7 +275,7 @@ function rerenderUI(state) {
         })
       );
     }),
-    document.getElementById("transcript")
+    document.getElementById("transcript-entries")
   );
 
   // render suggested actions
@@ -329,6 +351,19 @@ function initiallyRenderUI(state) {
 
   // get the initial set of suggestions
   refreshSuggestions();
+
+  // render the dramatis personae / initial character situations
+  ReactDOM.render(
+    state.initialCharSituations.map(char => {
+      return e("span", {className: "char-situation"},
+        e("span", {className: "char-name"}, char.name),
+        ", ",
+        char.situations.join(", "),
+        e("br")
+      );
+    }),
+    document.getElementById("dramatis-personae")
+  );
 
   // do a first render pass on all the dynamic UI bits too
   rerenderUI(state);
