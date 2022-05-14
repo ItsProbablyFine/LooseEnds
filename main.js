@@ -214,7 +214,13 @@ function applyUIEffect(effect, params) {
     appState.suggestionsCursor = nextCursor;
   }
 
-  // TODO goal UI effects?
+  // goal UI effects
+  else if (effect === "openGoalComposer") {
+    appState.goalComposerActive = true;
+  }
+  else if (effect === "closeGoalComposer") {
+    appState.goalComposerActive = false;
+  }
 
   // fallback: catch any attempts to invoke nonexistent UI effect types
   else {
@@ -291,9 +297,25 @@ function rerenderUI(state) {
   });
   goalElems.push(e("div", {
     className: "add-goal",
-    onClick: ev => applyUIEffect("addGoal", {})
+    onClick: ev => applyUIEffect("openGoalComposer", {})
   }, "+"));
   ReactDOM.render(goalElems, document.getElementById("goals"));
+
+  // render goal composer if active
+  let goalComposer = null;
+  if (state.goalComposerActive) {
+    goalComposer = e("div", {
+        className: "goal-composer-modal",
+        onClick: ev => applyUIEffect("closeGoalComposer", {})
+      },
+      e("div", {className: "goal-composer"},
+        e("h3", {}, "Add new author goal"),
+        e("p", {style: {textAlign: "center"}}, "⚠️ under construction ⚠️")
+      )
+    ),
+    document.getElementById("goal-composer-modal");
+  }
+  ReactDOM.render(goalComposer, document.getElementById("goal-composer-modal"));
 }
 
 function initiallyRenderUI(state) {
