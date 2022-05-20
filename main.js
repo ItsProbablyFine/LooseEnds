@@ -1,6 +1,6 @@
 /// stub sim
 
-const allEventSpecs = [
+const basicEventSpecs = [
   {eventType: "getCoffeeWith", tags: ["friendly"]},
   {eventType: "physicallyAttack", tags: ["unfriendly", "harms", "major"]},
   {eventType: "disparagePublicly", tags: ["unfriendly", "harms"]},
@@ -48,10 +48,30 @@ function getCharName(db, id) {
   return datascript.q(`[:find ?n . :where [${id} "type" "char"] [${id} "name" ?n]]`, db);
 }
 
-function getAllPossibleActions(db) {
+function generatePossibleActions(goal) {
+  if (goal.name === "majorWork") {
+    if (goal.abandoned) {
+      return [{eventType: "resumeMajorWork"}];
+    }
+    else {
+      return [
+        {eventType: "abandonMajorWork"},
+        {eventType: "makeProgressOnMajorWork"},
+        {eventType: "worryAboutMajorWork"},
+        {eventType: "complainAboutMajorWork"},
+        {eventType: "finishMajorWork"}
+      ];
+    }
+  }
+  else {
+    return [];
+  }
+}
+
+function getAllPossibleActions(appState) {
   const allPossibleActions = [];
-  const charIDPairs = getAllCharIDPairs(db);
-  for (const eventSpec of allEventSpecs) {
+  const charIDPairs = getAllCharIDPairs(appState.db);
+  for (const eventSpec of basicEventSpecs) {
     for (const [c1, c2] of charIDPairs) {
       allPossibleActions.push({
         type: "event",
@@ -60,6 +80,13 @@ function getAllPossibleActions(db) {
         actor: c1,
         target: c2
       });
+    }
+  }
+  for (const goal of appState.goals) {
+    for (const actionTemplate of generatePossibleActions(goal)) {
+      actionTemplate.type = "event";
+      actionTemplate.goal = goal.id;
+      allPossibleActions.push(actionTemplate);
     }
   }
   return allPossibleActions;
@@ -165,7 +192,7 @@ function initAppState() {
 initAppState();
 
 function refreshSuggestions() {
-  const allSuggestions = shuffle(getAllPossibleActions(appState.db));
+  const allSuggestions = shuffle(getAllPossibleActions(appState));
   for (const suggestion of allSuggestions) {
     const nextDB = addEvent(appState.db, suggestion);
     suggestion.db = nextDB;
