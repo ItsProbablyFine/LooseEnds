@@ -70,8 +70,8 @@ const authorGoalTemplates = [
     name: "onARoll",
     pattern:
     `(pattern onARoll
-       (event ?e1 where tag: finishMajorWork, actor: ?c1)
-       (event ?e2 where tag: finishMajorWork, actor: ?c1)
+       (event ?e1 where eventType: finishMajorWork, actor: ?c1)
+       (event ?e2 where eventType: finishMajorWork, actor: ?c1)
        (unless-event ?e3 where eventType: finishMajorWork, actor: ?c2, (not= ?c1 ?c2)))`,
     stages: [
       "?c1 finishes a major work",
@@ -409,6 +409,9 @@ function applyUIEffect(effect, params) {
   else if (effect === "closeGoalComposer") {
     appState.goalComposerActive = false;
   }
+  else if (effect === "addAuthorGoal") {
+    addAuthorGoal(appState, params.name);
+  }
 
   // fallback: catch any attempts to invoke nonexistent UI effect types
   else {
@@ -503,7 +506,15 @@ function rerenderUI(state) {
       },
       e("div", {className: "goal-composer"},
         e("h3", {}, "Add new author goal"),
-        e("p", {style: {textAlign: "center"}}, "⚠️ under construction ⚠️")
+        e("div", {className: "goal-template-picker"},
+          authorGoalTemplates.map(agt => {
+            return e("div", {
+              className: "goal-template",
+              onClick: ev => applyUIEffect("addAuthorGoal", {name: agt.name})
+            },
+            agt.name);
+          })
+        )
       )
     ),
     document.getElementById("goal-composer-modal");
