@@ -1,8 +1,12 @@
 /// stub sim
 
-const basicEventSpecs = [
+const basicSoloEventSpecs = [
+  {eventType: "beginMajorWork", tags: ["artistic", "major"]}
+];
+
+const basicDyadicEventSpecs = [
   {eventType: "getCoffeeWith", tags: ["friendly"]},
-  {eventType: "physicallyAttack", tags: ["unfriendly", "harms", "major"]},
+  //{eventType: "physicallyAttack", tags: ["unfriendly", "harms", "major"]},
   {eventType: "disparagePublicly", tags: ["unfriendly", "harms"]},
   {eventType: "declareRivalry", tags: ["unfriendly"]},
   {eventType: "sendPostcard", tags: ["friendly"]},
@@ -11,11 +15,11 @@ const basicEventSpecs = [
   {eventType: "rejectSuperiority", tags: ["unfriendly", "lowStatus"]},
   {eventType: "flirtWith_accepted", tags: ["romantic", "positive"]},
   {eventType: "flirtWith_rejected", tags: ["romantic", "negative", "awkward"]},
-  {eventType: "askOut_accepted", tags: ["romantic", "positive", "major"]},
-  {eventType: "askOut_rejected", tags: ["romantic", "negative", "awkward", "major"]},
-  {eventType: "propose_accepted", tags: ["romantic", "positive", "major"]},
-  {eventType: "propose_rejected", tags: ["romantic", "negative", "awkward", "major"]},
-  {eventType: "breakUp", tags: ["romantic", "negative", "major"]},
+  //{eventType: "askOut_accepted", tags: ["romantic", "positive", "major"]},
+  //{eventType: "askOut_rejected", tags: ["romantic", "negative", "awkward", "major"]},
+  //{eventType: "propose_accepted", tags: ["romantic", "positive", "major"]},
+  //{eventType: "propose_rejected", tags: ["romantic", "negative", "awkward", "major"]},
+  //{eventType: "breakUp", tags: ["romantic", "negative", "major"]},
   {eventType: "buyLunchFor", tags: ["friendly"]},
   {eventType: "inviteIntoGroup", tags: ["highStatus", "friendly", "helps"]},
   {eventType: "shunFromGroup", tags: ["highStatus", "unfriendly", "harms"]},
@@ -24,19 +28,65 @@ const basicEventSpecs = [
   {eventType: "extortFavor", tags: ["highStatus"]},
   {eventType: "callInFavor", tags: ["highStatus"]},
   {eventType: "callInExtortionateFavor", tags: ["highStatus", "harms"]},
-  {eventType: "playTheFool", tags: ["lowStatus", "friendly"]},
-  {eventType: "playRoyalty", tags: ["highStatus", "friendly"]},
-  {eventType: "neg", tags: ["highStatus", "romantic", "negative"]},
+  //{eventType: "playTheFool", tags: ["lowStatus", "friendly"]},
+  //{eventType: "playRoyalty", tags: ["highStatus", "friendly"]},
+  //{eventType: "neg", tags: ["highStatus", "romantic", "negative"]},
   {eventType: "askForHelp", tags: ["lowStatus", "friendly"]},
   {eventType: "deferToExpertise", tags: ["career", "lowStatus"]},
   {eventType: "noticeMeSenpai", tags: ["lowStatus", "romantic"]},
-  {eventType: "deliberatelySabotage", tags: ["career", "unfriendly", "harms", "major"]},
-  {eventType: "collab:phoneItIn", tags: ["career", "harms"]},
-  {eventType: "collab:goAboveAndBeyond", tags: ["career", "helps"]},
+  //{eventType: "deliberatelySabotage", tags: ["career", "unfriendly", "harms", "major"]},
+  //{eventType: "collab:phoneItIn", tags: ["career", "harms"]},
+  //{eventType: "collab:goAboveAndBeyond", tags: ["career", "helps"]},
+];
+
+const authorGoalTemplates = [
+  {
+    name: "establishRivalry",
+    pattern:
+    `(pattern establishRivalry
+       (event ?e1 where tag: unfriendly, actor: ?c1, target: ?c2)
+       (event ?e2 where tag: unfriendly, actor: ?c2, target: ?c1)
+       (event ?e3 where eventType: declareRivalry, actor: ?c1, target: ?c2))`,
+    stages: [
+      "?c1 is unfriendly to ?c2",
+      "?c2 is unfriendly to ?c1",
+      "?c1 declares ?c2 a rival"
+    ]
+  },
+  {
+    name: "majorWork",
+    pattern:
+    `(pattern majorWork
+       (event ?e1 where eventType: beginMajorWork, actor: ?c1)
+       (event ?e2 where eventType: makeProgressOnMajorWork, actor: ?c1)
+       (event ?e3 where eventType: makeProgressOnMajorWork, actor: ?c1)
+       (event ?e4 where eventType: makeProgressOnMajorWork, actor: ?c1)
+       (event ?e5 where eventType: finishMajorWork, actor: ?c1))`,
+    stages: [
+      "?c1 begins a major work",
+      "?c1 makes progress on the work",
+      "?c1 makes more progress on the work",
+      "?c1 makes even more progress on the work",
+      "?c1 finishes the work"
+    ]
+  },
+  {
+    name: "onARoll",
+    pattern:
+    `(pattern onARoll
+       (event ?e1 where tag: finishMajorWork, actor: ?c1)
+       (event ?e2 where tag: finishMajorWork, actor: ?c1)
+       (unless-event ?e3 where eventType: finishMajorWork, actor: ?c2, (not= ?c1 ?c2)))`,
+    stages: [
+      "?c1 finishes a major work",
+      "?c1 finishes another major work"
+      //"?c2 finishes a major work first"
+    ]
+  }
 ];
 
 function getAllCharIDs(db) {
-  return datascript.q(`[:find ?c :where [?c "type" "char"]]`, db);
+  return datascript.q(`[:find ?c :where [?c "type" "char"]]`, db).map(res => res[0]);
 }
 
 function getAllCharIDPairs(db) {
@@ -49,17 +99,41 @@ function getCharName(db, id) {
 }
 
 function generatePossibleActions(goal) {
-  if (goal.name === "majorWork") {
+  if (goal.pattern.name === "majorWork" && goal.bindings["?c1"]) {
     if (goal.abandoned) {
-      return [{eventType: "resumeMajorWork"}];
+      return [{
+        eventType: "resumeMajorWork",
+        actor: goal.bindings["?c1"],
+        tags: ["artistic", "positive", "minor"]
+      }];
     }
     else {
       return [
-        {eventType: "abandonMajorWork"},
-        {eventType: "makeProgressOnMajorWork"},
-        {eventType: "worryAboutMajorWork"},
-        {eventType: "complainAboutMajorWork"},
-        {eventType: "finishMajorWork"}
+        {
+          eventType: "abandonMajorWork",
+          actor: goal.bindings["?c1"],
+          tags: ["artistic", "negative", "major"]
+        },
+        {
+          eventType: "makeProgressOnMajorWork",
+          actor: goal.bindings["?c1"],
+          tags: ["artistic", "positive", "minor"]
+        },
+        {
+          eventType: "worryAboutMajorWork",
+          actor: goal.bindings["?c1"],
+          tags: ["worry", "artistic", "negative", "minor"]
+        },
+        {
+          eventType: "complainAboutMajorWork",
+          actor: goal.bindings["?c1"],
+          tags: ["complain", "artistic", "negative", "minor"]
+        },
+        {
+          eventType: "finishMajorWork",
+          actor: goal.bindings["?c1"],
+          tags: ["artistic", "positive", "major"]
+        }
       ];
     }
   }
@@ -70,8 +144,19 @@ function generatePossibleActions(goal) {
 
 function getAllPossibleActions(appState) {
   const allPossibleActions = [];
+  const charIDs = getAllCharIDs(appState.db);
   const charIDPairs = getAllCharIDPairs(appState.db);
-  for (const eventSpec of basicEventSpecs) {
+  for (const eventSpec of basicSoloEventSpecs) {
+    for (const c of charIDs) {
+      allPossibleActions.push({
+        type: "event",
+        eventType: eventSpec.eventType,
+        tags: eventSpec.tags,
+        actor: c
+      });
+    }
+  }
+  for (const eventSpec of basicDyadicEventSpecs) {
     for (const [c1, c2] of charIDPairs) {
       allPossibleActions.push({
         type: "event",
@@ -99,7 +184,7 @@ function addEvent(db, event) {
     if (attr === "tags") continue;
     transaction.push([":db/add", -1, attr, event[attr]]);
   }
-  for (let tag of event.tags) {
+  for (let tag of event.tags || []) {
     transaction.push([":db/add", -1, "tag", tag]);
   }
   return datascript.db_with(db, transaction);
@@ -166,26 +251,16 @@ let appState = {
       ]
     };
   }),
-  goals: [
-    `(pattern establishRivalry
-       (event ?e1 where tag: unfriendly, actor: ?c1, target: ?c2)
-       (event ?e2 where tag: unfriendly, actor: ?c2, target: ?c1)
-       (event ?e3 where eventType: declareRivalry, actor: ?c1, target: ?c2))`,
-    `(pattern onARoll
-       (event ?e1 where tag: finishMajorWork, actor: ?c1)
-       (event ?e2 where tag: finishMajorWork, actor: ?c1)
-       (unless-event ?e3 where eventType: finishMajorWork, actor: ?c2, (not= ?c1 ?c2)))`
-  ],
+  goals: [],
+  nextAuthorGoalID: 0,
   suggestions: [],
   suggestionsCursor: 0,
   transcriptEntries: [],
 };
 
 function initAppState() {
-  for (let i = 0; i < appState.goals.length; i++) {
-    const rawPattern = appState.goals[i];
-    const compiledPattern = compilePattern(parse(rawPattern)[0]);
-    appState.goals[i] = {pattern: compiledPattern, bindings: {}};
+  for (const goalName of ["establishRivalry", "majorWork"]) {
+    addAuthorGoal(appState, goalName);
   }
 }
 
@@ -211,6 +286,21 @@ function refreshSuggestions() {
   appState.suggestionsCursor = 0;
 }
 
+function getAuthorGoal(appState, goalID) {
+  return appState.goals.find(goal => goal.id === goalID);
+}
+
+function addAuthorGoal(appState, goalName) {
+  const goalTemplate = authorGoalTemplates.find(agt => agt.name === goalName);
+  const compiledPattern = compilePattern(parse(goalTemplate.pattern)[0]);
+  appState.goals.push({id: appState.nextAuthorGoalID, pattern: compiledPattern, bindings: {}});
+  appState.nextAuthorGoalID += 1;
+}
+
+function removeAuthorGoal(appState, goalID) {
+  appState.goals = appState.goals.filter(goal => goal.id !== goalID);
+}
+
 function applyUIEffect(effect, params) {
   // transcript UI effects
   if (effect === "updateTranscriptEntryText") {
@@ -227,9 +317,9 @@ function applyUIEffect(effect, params) {
     const latestEventID = newestEID(appState.db);
     const latestEvent = getEntity(appState.db, latestEventID);
     const actorName = getCharName(appState.db, suggestion.actor);
-    const targetName = getCharName(appState.db, suggestion.target);
+    const targetName = suggestion.target ? getCharName(appState.db, suggestion.target) : "";
     appState.transcriptEntries.push({
-      title: `${actorName} ${latestEvent.eventType} ${targetName}`,
+      title: `${actorName} ${latestEvent.eventType} ${targetName}`.trim(),
       text: ""
     });
     // update any goals that this suggestion advances/completes/cuts off
@@ -239,7 +329,9 @@ function applyUIEffect(effect, params) {
       console.log("possibleGoalUpdates", possibleGoalUpdates);
       const meaningfulUpdates = possibleGoalUpdates.filter(g => g.lastStep !== "pass");
       if (meaningfulUpdates.length > 0) {
+        const prevGoalID = appState.goals[i].id;
         appState.goals[i] = meaningfulUpdates[0];
+        appState.goals[i].id = prevGoalID;
       }
     }
     // refresh suggestions based on new DB state
@@ -317,7 +409,7 @@ function rerenderUI(state) {
     suggestions.map((suggestion, suggestionIdx) => {
       const absoluteSuggestionIdx = cursor + suggestionIdx;
       const actorName = getCharName(state.db, suggestion.actor);
-      const targetName = getCharName(state.db, suggestion.target);
+      const targetName = suggestion.target ? getCharName(state.db, suggestion.target) : "";
       return e("div", {
           className: "suggestion",
           key: suggestionIdx,
@@ -325,7 +417,7 @@ function rerenderUI(state) {
           onMouseEnter: ev => applyUIEffect("hoverSuggestion", {suggestion: absoluteSuggestionIdx}),
           onMouseLeave: ev => applyUIEffect("unhoverSuggestion", {})
         },
-        `${actorName} ${suggestion.eventType} ${targetName}`
+        `${actorName} ${suggestion.eventType} ${targetName}`.trim()
       );
     }),
     document.getElementById("suggestions")
