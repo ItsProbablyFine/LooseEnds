@@ -61,8 +61,8 @@ const authorGoalTemplates = [
     stages: [
       "?c1 begins a major work",
       "?c1 makes progress on the work",
-      "?c1 makes more progress on the work",
-      "?c1 makes even more progress on the work",
+      "?c1 makes more progress",
+      "?c1 makes even more progress",
       "?c1 finishes the work"
     ]
   },
@@ -478,17 +478,35 @@ function rerenderUI(state) {
     const firstIncompleteClauseIdx = goal.pattern.eventClauses.findIndex(
       ec => !hasBinding(goal, ec.eventLvar)
     );
+    const goalTpl = authorGoalTemplates.find(agt => agt.name === goal.pattern.name);
+    const friendlyBindings = {};
+    for (const lvar of Object.keys(goal.bindings)) {
+      const val = goal.bindings[lvar];
+      if (Number.isInteger(val)) {
+        const ent = getEntity(appState.db, val);
+        friendlyBindings[lvar] = ent.name;
+      } else {
+        friendlyBindings[lvar] = val;
+      }
+    }
+    const clauseElems = [];
+    for (let clauseIdx = 0; clauseIdx < goal.pattern.eventClauses.length; clauseIdx++) {
+      const clause = goal.pattern.eventClauses[clauseIdx];
+      const complete = goal.lastStep === "complete" || clauseIdx < firstIncompleteClauseIdx;
+      const stageDescTpl = goalTpl.stages[clauseIdx];
+      let stageDesc = stageDescTpl;
+      for (const lvar of Object.keys(friendlyBindings)) {
+        stageDesc = stageDesc.replaceAll(lvar, friendlyBindings[lvar]);
+      }
+      clauseElems.push(e("div", {
+        className: "goal-part" + (complete ? " complete" : ""),
+        key: clauseIdx
+      },
+      stageDesc));
+    }
     return e("div", {className: "goal"},
       e("div", {className: "goal-title", key: -1}, goal.pattern.name),
-      goal.pattern.eventClauses.map((clause, clauseIdx) => {
-        const complete = goal.lastStep === "complete" || clauseIdx < firstIncompleteClauseIdx;
-        return e("div", {
-            className: "goal-part" + (complete ? " complete" : ""),
-            key: clauseIdx
-          },
-          clause.where.join(" ")
-        );
-      })
+      clauseElems
     );
   });
   goalElems.push(e("div", {
