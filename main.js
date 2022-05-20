@@ -8,7 +8,6 @@ const basicDyadicEventSpecs = [
   {eventType: "getCoffeeWith", tags: ["friendly"]},
   //{eventType: "physicallyAttack", tags: ["unfriendly", "harms", "major"]},
   {eventType: "disparagePublicly", tags: ["unfriendly", "harms"]},
-  {eventType: "declareRivalry", tags: ["unfriendly"]},
   {eventType: "sendPostcard", tags: ["friendly"]},
   {eventType: "insult", tags: ["unfriendly"]},
   {eventType: "insultDismissively", tags: ["unfriendly", "highStatus"]},
@@ -34,23 +33,20 @@ const basicDyadicEventSpecs = [
   {eventType: "askForHelp", tags: ["lowStatus", "friendly"]},
   {eventType: "deferToExpertise", tags: ["career", "lowStatus"]},
   {eventType: "noticeMeSenpai", tags: ["lowStatus", "romantic"]},
-  //{eventType: "deliberatelySabotage", tags: ["career", "unfriendly", "harms", "major"]},
   //{eventType: "collab:phoneItIn", tags: ["career", "harms"]},
   //{eventType: "collab:goAboveAndBeyond", tags: ["career", "helps"]},
 ];
 
 const authorGoalTemplates = [
   {
-    name: "establishRivalry",
+    name: "establishGrudge",
     pattern:
-    `(pattern establishRivalry
-       (event ?e1 where tag: unfriendly, actor: ?c1, target: ?c2)
-       (event ?e2 where tag: unfriendly, actor: ?c2, target: ?c1)
-       (event ?e3 where eventType: declareRivalry, actor: ?c1, target: ?c2))`,
+    `(pattern establishGrudge
+       (event ?e1 where tag: unfriendly, actor: ?c2, target: ?c1)
+       (event ?e2 where eventType: formGrudge, actor: ?c1, target: ?c2))`,
     stages: [
-      "?c1 is unfriendly to ?c2",
       "?c2 is unfriendly to ?c1",
-      "?c1 declares ?c2 a rival"
+      "?c1 forms a grudge on ?c2"
     ]
   },
   {
@@ -107,13 +103,27 @@ function generatePossibleActions(goal) {
         tags: ["artistic", "positive", "minor"]
       }];
     }
-    else {
-      return [
-        {
+    else if (!goal.bindings["?e1"]) {
+      const enabledActions = [];
+      const possibleActors = goal.bindings["?c1"]
+        ? [goal.bindings["?c1"]]
+        : getAllCharIDs(appState.db);
+      for (const charID of possibleActors) {
+        enabledActions.push({
+          eventType: "beginMajorWork",
+          actor: charID,
+          tags: ["artistic", "major"]
+        });
+      }
+      return enabledActions;
+    }
+    else if (!goal.bindings["?e5"]) {
+      const enabledActions = [
+        /*{
           eventType: "abandonMajorWork",
           actor: goal.bindings["?c1"],
           tags: ["artistic", "negative", "major"]
-        },
+        },*/
         {
           eventType: "makeProgressOnMajorWork",
           actor: goal.bindings["?c1"],
@@ -128,13 +138,44 @@ function generatePossibleActions(goal) {
           eventType: "complainAboutMajorWork",
           actor: goal.bindings["?c1"],
           tags: ["complain", "artistic", "negative", "minor"]
-        },
-        {
+        }
+      ];
+      if (goal.bindings["?e4"]) {
+        enabledActions.push({
           eventType: "finishMajorWork",
           actor: goal.bindings["?c1"],
           tags: ["artistic", "positive", "major"]
-        }
+        });
+      }
+      return enabledActions;
+    }
+    else {
+      return [];
+    }
+  }
+  else if (goal.pattern.name === "establishGrudge") {
+    if (goal.bindings["?e1"] && !goal.bindings["?e2"]) {
+      return [{
+        eventType: "formGrudge",
+        actor: goal.bindings["?c1"],
+        target: goal.bindings["?c2"],
+        tags: ["negative", "major"]
+      }];
+    }
+    else if (goal.bindings["?e2"]) {
+      const enabledActions = [
+        {eventType: "sabotage", tags: ["career", "unfriendly", "harms", "major"]},
+        {eventType: "complainAboutGrudge", tags: ["complain", "negative", "minor"]},
+        {eventType: "worryAboutGrudge", tags: ["worry", "negative", "minor"]},
       ];
+      enabledActions.forEach(template => {
+        template.actor = goal.bindings["?c1"];
+        template.target = goal.bindings["?c2"];
+      });
+      return enabledActions;
+    }
+    else {
+      return [];
     }
   }
   else {
@@ -259,7 +300,7 @@ let appState = {
 };
 
 function initAppState() {
-  for (const goalName of ["establishRivalry", "majorWork"]) {
+  for (const goalName of ["establishGrudge", "majorWork"]) {
     addAuthorGoal(appState, goalName);
   }
 }
@@ -280,8 +321,14 @@ function refreshSuggestions() {
       suggestion.goalUpdates = suggestion.goalUpdates.concat(possibleGoalUpdates);
     }
   }
-  // sort by whether/how each suggestion advances active goals (FIXME improve this)
-  allSuggestions.sort((a, b) => b.goalUpdates.length - a.goalUpdates.length);
+  // Sort by whether/how each suggestion advances active goals,
+  // and secondarily by whether each suggestion is enabled by an active goal
+  // (even if it doesn't advance any goals). FIXME Improve this.
+  allSuggestions.sort((a, b) => {
+    const bScore = b.goalUpdates.length + (b.goal ? 0.5 : 0);
+    const aScore = a.goalUpdates.length + (a.goal ? 0.5 : 0);
+    return bScore - aScore;
+  });
   appState.suggestions = allSuggestions;
   appState.suggestionsCursor = 0;
 }
