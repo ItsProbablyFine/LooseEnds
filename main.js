@@ -411,6 +411,11 @@ function applyUIEffect(effect, params) {
   }
   else if (effect === "addAuthorGoal") {
     addAuthorGoal(appState, params.name);
+    refreshSuggestions();
+  }
+  else if (effect === "removeAuthorGoal") {
+    removeAuthorGoal(appState, params.id);
+    refreshSuggestions();
   }
 
   // fallback: catch any attempts to invoke nonexistent UI effect types
@@ -505,7 +510,13 @@ function rerenderUI(state) {
       stageDesc));
     }
     return e("div", {className: "goal"},
-      e("div", {className: "goal-title", key: -1}, goal.pattern.name),
+      e("div", {className: "goal-title", key: -1},
+        e("span", {
+          className: "delete-goal-button",
+          onClick: ev => applyUIEffect("removeAuthorGoal", {id: goal.id})
+        }, "❌"),
+        goal.pattern.name
+      ),
       clauseElems
     );
   });
