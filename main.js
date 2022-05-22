@@ -1,7 +1,7 @@
 /// stub sim
 
 const basicSoloEventSpecs = [
-  {eventType: "beginMajorWork", tags: ["artistic", "major"]}
+  //{eventType: "beginMajorWork", tags: ["artistic", "major"]}
 ];
 
 const basicDyadicEventSpecs = [
@@ -95,15 +95,8 @@ function getCharName(db, id) {
 }
 
 function generatePossibleActions(goal) {
-  if (goal.pattern.name === "majorWork" && goal.bindings["?c1"]) {
-    if (goal.abandoned) {
-      return [{
-        eventType: "resumeMajorWork",
-        actor: goal.bindings["?c1"],
-        tags: ["artistic", "positive", "minor"]
-      }];
-    }
-    else if (!goal.bindings["?e1"]) {
+  if (goal.pattern.name === "majorWork") {
+    if (!goal.bindings["?e1"]) {
       const enabledActions = [];
       const possibleActors = goal.bindings["?c1"]
         ? [goal.bindings["?c1"]]
@@ -116,6 +109,13 @@ function generatePossibleActions(goal) {
         });
       }
       return enabledActions;
+    }
+    else if (goal.abandoned && !goal.bindings["?e5"]) {
+      return [{
+        eventType: "resumeMajorWork",
+        actor: goal.bindings["?c1"],
+        tags: ["artistic", "positive", "minor"]
+      }];
     }
     else if (!goal.bindings["?e5"]) {
       const enabledActions = [
