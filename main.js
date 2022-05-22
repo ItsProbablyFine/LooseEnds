@@ -294,6 +294,7 @@ let appState = {
   }),
   goals: [],
   nextAuthorGoalID: 0,
+  backgroundPartialMatches: [],
   suggestions: [],
   suggestionsCursor: 0,
   transcriptEntries: [],
@@ -302,6 +303,10 @@ let appState = {
 function initAppState() {
   for (const goalName of ["establishGrudge", "majorWork"]) {
     addAuthorGoal(appState, goalName);
+  }
+  for (const goalTemplate of authorGoalTemplates) {
+    const compiledPattern = compilePattern(parse(goalTemplate.pattern)[0]);
+    appState.backgroundPartialMatches.push({pattern: compiledPattern, bindings: {}});
   }
 }
 
@@ -381,6 +386,15 @@ function applyUIEffect(effect, params) {
         appState.goals[i].id = prevGoalID;
       }
     }
+    // update background partial matches too
+    appState.backgroundPartialMatches = mapcat(
+      appState.backgroundPartialMatches,
+      function(partialMatch) {
+        const possibleMatchUpdates = tryAdvance(partialMatch, appState.db, "", latestEventID);
+        return possibleMatchUpdates.filter(pmu => pmu.lastStep !== "die");
+        // FIXME also filter out complete matches?
+      }
+    );
     // refresh suggestions based on new DB state
     refreshSuggestions();
   }
