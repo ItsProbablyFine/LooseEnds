@@ -369,6 +369,10 @@ function removeAuthorGoal(appState, goalID) {
   appState.goals = appState.goals.filter(goal => goal.id !== goalID);
 }
 
+function summarizeAuthorGoal(goal) {
+  return goal.pattern.name + "|" + Object.values(goal.bindings).join("|");
+}
+
 function applyUIEffect(effect, params) {
   // transcript UI effects
   if (effect === "updateTranscriptEntryText") {
@@ -398,19 +402,58 @@ function applyUIEffect(effect, params) {
       const meaningfulUpdates = possibleGoalUpdates.filter(g => g.lastStep !== "pass");
       if (meaningfulUpdates.length > 0) {
         const prevGoalID = appState.goals[i].id;
+        const prevStatus = appState.goals[i].status;
         appState.goals[i] = meaningfulUpdates[0];
         appState.goals[i].id = prevGoalID;
+        if (prevStatus) {
+          appState.goals[i].status = prevStatus;
+        }
       }
     }
     // update background partial matches too
     appState.backgroundPartialMatches = mapcat(
       appState.backgroundPartialMatches,
       function(partialMatch) {
-        const possibleMatchUpdates = tryAdvance(partialMatch, appState.db, "", latestEventID);
+        let possibleMatchUpdates = tryAdvance(partialMatch, appState.db, "", latestEventID);
+        // greedily replace bpms with advanced versions of themselves,
+        // except for the baseline empty bpms we keep around to capture later match opportunities
+        if (possibleMatchUpdates[0].lastStep === "pass"
+            && possibleMatchUpdates.length > 1
+            && Object.keys(possibleMatchUpdates[0].bindings).length > 0) {
+          possibleMatchUpdates = possibleMatchUpdates.slice(1);
+        }
         return possibleMatchUpdates.filter(pmu => pmu.lastStep !== "die");
         // FIXME also filter out complete matches?
       }
     );
+    // copy over background partial matches to player-visible goals if it makes sense to do so
+    const goalSummaries = appState.goals.map(summarizeAuthorGoal);
+    for (const bpm of appState.backgroundPartialMatches) {
+      // skip to next background partial match if this bpm wasn't just advanced
+      // (FIXME does lastStep have to be literally "accept", or is any non-"pass" lastStep ok?)
+      if (bpm.lastStep !== "accept") continue;
+      // skip to next background partial match if this bpm is already a goal
+      const bpmSummary = summarizeAuthorGoal(bpm);
+      if (goalSummaries.includes(bpmSummary)) continue;
+      // skip to next background partial match if not enough progress on this one yet
+      const numClauses = bpm.pattern.eventClauses.length;
+      let numClausesBound = 0;
+      for (const clause of bpm.pattern.eventClauses) {
+        if (!hasBinding(bpm, clause.eventLvar)) break;
+        numClausesBound += 1;
+      }
+      const completionProgress = numClausesBound / numClauses;
+      if (completionProgress < 0.4) continue;
+      // add this background partial match directly to goals
+      bpm.status = "suggested";
+      bpm.id = appState.nextAuthorGoalID;
+      appState.nextAuthorGoalID += 1;
+      appState.goals.push(bpm);
+    }
+    // remove bpms that were suggested as goals from the bpm pool
+    appState.backgroundPartialMatches = appState.backgroundPartialMatches.filter(bpm => {
+      return bpm.status !== "suggested";
+    });
     // refresh suggestions based on new DB state
     refreshSuggestions();
   }
@@ -557,7 +600,7 @@ function rerenderUI(state) {
       },
       stageDesc));
     }
-    return e("div", {className: "goal"},
+    return e("div", {className: `goal${goal.status === "suggested" ? " suggested" : ""}`},
       e("div", {className: "goal-title", key: -1},
         e("span", {
           className: "delete-goal-button",
