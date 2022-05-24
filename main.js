@@ -488,6 +488,10 @@ function applyUIEffect(effect, params) {
   else if (effect === "closeGoalComposer") {
     appState.goalComposerActive = false;
   }
+  else if (effect === "acceptSuggestedAuthorGoal") {
+    delete appState.goals.find(goal => goal.id === params.id).status;
+    // FIXME suggestions shouldn't change when a goal goes from suggested to accepted, right?
+  }
   else if (effect === "addAuthorGoal") {
     addAuthorGoal(appState, params.name);
     refreshSuggestions();
@@ -600,7 +604,13 @@ function rerenderUI(state) {
       },
       stageDesc));
     }
-    return e("div", {className: `goal${goal.status === "suggested" ? " suggested" : ""}`},
+    const goalDivAttrs = {
+      className: `goal${goal.status === "suggested" ? " suggested" : ""}`
+    };
+    if (goal.status === "suggested") {
+      goalDivAttrs.onClick = (ev => applyUIEffect("acceptSuggestedAuthorGoal", {id: goal.id}));
+    }
+    return e("div", goalDivAttrs,
       e("div", {className: "goal-title", key: -1},
         e("span", {
           className: "delete-goal-button",
