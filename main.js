@@ -521,7 +521,7 @@ function applyUIEffect(effect, params) {
         numClausesBound += 1;
       }
       const completionProgress = numClausesBound / numClauses;
-      if (completionProgress < 0.4) continue;
+      if (completionProgress < 0.33) continue;
       // add this background partial match directly to goals
       bpm.status = "suggested";
       bpm.id = appState.nextAuthorGoalID;
