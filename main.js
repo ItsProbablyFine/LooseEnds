@@ -67,6 +67,22 @@ const authorGoalTemplates = [
     ]
   },
   {
+    name: "troubledMajorWork",
+    pattern:
+    `(pattern troubledMajorWork
+       (event ?e1 where eventType: beginMajorWork, actor: ?c1)
+       (event ?e2 where tag: artistic, tag: negative, actor: ?c1)
+       (event ?e3 where tag: artistic, tag: negative, actor: ?c1)
+       (event ?e4 where tag: artistic, tag: negative, actor: ?c1)
+       (unless-event where eventType: finishMajorWork, actor: ?c1))`,
+    stages: [
+      "?c1 begins a major work",
+      "?c1 suffers an artistic setback",
+      "?c1 suffers another setback",
+      "?c1 suffers yet another setback"
+    ]
+  },
+  {
     name: "onARoll",
     pattern:
     `(pattern onARoll
