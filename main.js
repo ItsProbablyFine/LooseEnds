@@ -692,7 +692,10 @@ function rerenderUI(state) {
       e("div", {className: "goal-title", key: -1},
         e("span", {
           className: "delete-goal-button",
-          onClick: ev => applyUIEffect("removeAuthorGoal", {id: goal.id})
+          onClick: ev => {
+            ev.stopPropagation();
+            applyUIEffect("removeAuthorGoal", {id: goal.id});
+          }
         }, "❌"),
         goal.pattern.name
       ),
