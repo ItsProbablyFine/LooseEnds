@@ -399,15 +399,21 @@ function applyUIEffect(effect, params) {
     refreshSuggestions();
   }
   else if (effect === "hoverSuggestion") {
-    console.warn("Unimplemented UI effect type", effect);
     // identify which suggestion we're trying to perform
     const suggestion = appState.suggestions[params.suggestion];
-    // TODO visually update any goals that would be advanced/completed/cut off by it
-    // (might need to speculatively perform it for this to work?)
+    // visually update any goals that would be advanced/completed/cut off by it
+    for (const goalUpdate of suggestion.goalUpdates) {
+      if (goalUpdate.lastStep !== "pass") {
+        const goal = appState.goals.find(g => g.id === goalUpdate.parent.id);
+        goal.updateIfSuggestionAccepted = goalUpdate;
+      }
+    }
   }
   else if (effect === "unhoverSuggestion") {
-    console.warn("Unimplemented UI effect type", effect);
-    // TODO visually update any goals that are currently impacted by suggestion hover
+    // visually update any goals that are currently impacted by suggestion hover
+    appState.goals.forEach(goal => {
+      delete goal.updateIfSuggestionAccepted;
+    });
   }
   else if (effect === "showMoreSuggestions") {
     // advance the suggestions cursor, wrapping around if we reach the end
@@ -493,7 +499,7 @@ function rerenderUI(state) {
   );
 
   // render goals
-  const goalElems = appState.goals.map(goal => {
+  const goalElems = state.goals.map(goal => {
     const firstIncompleteClauseIdx = goal.pattern.eventClauses.findIndex(
       ec => !hasBinding(goal, ec.eventLvar)
     );
@@ -508,17 +514,29 @@ function rerenderUI(state) {
         friendlyBindings[lvar] = val;
       }
     }
+    const nextStep = goal.updateIfSuggestionAccepted?.lastStep;
     const clauseElems = [];
     for (let clauseIdx = 0; clauseIdx < goal.pattern.eventClauses.length; clauseIdx++) {
       const clause = goal.pattern.eventClauses[clauseIdx];
       const complete = goal.lastStep === "complete" || clauseIdx < firstIncompleteClauseIdx;
+      const firstIncompleteClause = clauseIdx === firstIncompleteClauseIdx;
+      const highlight = firstIncompleteClause && ["accept","complete"].includes(nextStep);
       const stageDescTpl = goalTpl.stages[clauseIdx];
       let stageDesc = stageDescTpl;
       for (const lvar of Object.keys(friendlyBindings)) {
         stageDesc = stageDesc.replaceAll(lvar, friendlyBindings[lvar]);
       }
+      if (firstIncompleteClause && (goal.lastStep === "die" || nextStep === "die")) {
+        //const constraint = goal.updateIfSuggestionAccepted.deathDetails.constraint;
+        // TODO better description based on constraint
+        clauseElems.push(e("div", {
+          className: "goal-part die",
+          key: "unless-event" + clauseIdx
+        },
+        "Pattern cut off"));
+      }
       clauseElems.push(e("div", {
-        className: "goal-part" + (complete ? " complete" : ""),
+        className: `goal-part${complete ? " complete" : ""}${highlight ? " selected" : ""}`,
         key: clauseIdx
       },
       stageDesc));

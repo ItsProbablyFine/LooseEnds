@@ -47,9 +47,13 @@ function tryAdvance(partialMatch, db, rules, latestEventID) {
       db, rules, latestEventID, ...boundValues
     );
     if (results.length > 0) {
-      partialMatch.lastStep = "die";
-      partialMatch.deathDetails = {eventID: latestEventID, constraint};
-      return [partialMatch];
+      return [{
+        pattern: pattern,
+        bindings: bindings, // TODO push bindings from results[0]?
+        lastStep: "die",
+        deathDetails: {eventID: latestEventID, constraint},
+        parent: partialMatch
+      }];
     }
   }
 
