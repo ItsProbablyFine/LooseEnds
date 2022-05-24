@@ -2,14 +2,16 @@
 
 const basicSoloEventSpecs = [
   //{eventType: "beginMajorWork", tags: ["artistic", "major"]},
-  {eventType: "createMinorWork", tags: ["artistic", "positive"]},
-  {eventType: "receivePoorReview", tags: ["artistic", "negative"]},
-  {eventType: "receiveGoodReview", tags: ["artistic", "positive"]},
-  {eventType: "receiveAward", tags: ["artistic", "positive", "major"]}
+  {eventType: "createMinorWork", tags: ["release", "artistic", "positive"]},
+  {eventType: "receivePoorReview", tags: ["reception", "artistic", "negative"]},
+  {eventType: "receiveGoodReview", tags: ["reception", "artistic", "positive"]},
+  {eventType: "receiveAward", tags: ["reception", "artistic", "positive", "major"]}
 ];
 
 const basicDyadicEventSpecs = [
   {eventType: "getCoffeeWith", tags: ["friendly"]},
+  {eventType: "receiveNegativeFeedbackFrom", tags: ["reception", "artistic", "negative"]},
+  {eventType: "receivePositiveFeedbackFrom", tags: ["reception", "artistic", "positive"]},
   //{eventType: "physicallyAttack", tags: ["unfriendly", "harms", "major"]},
   {eventType: "disparagePublicly", tags: ["unfriendly", "harms"]},
   {eventType: "sendPostcard", tags: ["friendly"]},
@@ -157,6 +159,29 @@ const authorGoalTemplates = [
       //"?c2 creates a minor work"
     ]
   },
+  {
+    name: "tryTryAgain",
+    pattern:
+    `(pattern tryTryAgain
+       (event ?e1 where tag: release, actor: ?c1)
+       (event ?e2 where tag: reception, tag: negative, actor: ?c1)
+       (event ?e3 where tag: release, actor: ?c1)
+       (event ?e4 where tag: reception, tag: negative, actor: ?c1)
+       (event ?e5 where tag: release, actor: ?c1)
+       (event ?e6 where tag: reception, tag: positive, actor: ?c1)
+       (unless-event between ?e1 ?e5 where tag: reception, tag: positive, actor: ?c1)
+       (unless-event between ?e5 ?e6 where tag: reception, tag: negative, actor: ?c1))`,
+    stages: [
+      "?c1 releases an artwork",
+      "?c1's work is received poorly",
+      "?c1 releases another artwork",
+      "?c1's work is received poorly again",
+      "?c1 releases a third artwork",
+      "?c1's work is finally received well",
+      //"?c1's work is received well",
+      //"?c1's work is received poorly",
+    ]
+  },
 ];
 
 function getAllCharIDs(db) {
@@ -222,7 +247,7 @@ function generatePossibleActions(goal) {
         enabledActions.push({
           eventType: "finishMajorWork",
           actor: goal.bindings["?c1"],
-          tags: ["artistic", "positive", "major"]
+          tags: ["release", "artistic", "positive", "major"]
         });
       }
       return enabledActions;
