@@ -625,7 +625,20 @@ function rerenderUI(state) {
     className: "add-goal",
     onClick: ev => applyUIEffect("openGoalComposer", {})
   }, "+"));
-  ReactDOM.render(goalElems, document.getElementById("goals"));
+  // divide goalElems into two columns to approximate a masonry layout
+  const evenGoalElems = [];
+  const oddGoalElems = [];
+  for (let i = 0; i < goalElems.length; i++) {
+    const targetColumn = i % 2 === 0 ? evenGoalElems : oddGoalElems;
+    targetColumn.push(goalElems[i]);
+  }
+  ReactDOM.render(
+    e("div", {className: "goals"},
+      e("div", {className: "goals-column"}, evenGoalElems),
+      e("div", {className: "goals-column"}, oddGoalElems)
+    ),
+    document.getElementById("goals")
+  );
 
   // render goal composer if active
   let goalComposer = null;
