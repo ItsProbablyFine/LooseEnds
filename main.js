@@ -1,7 +1,11 @@
 /// stub sim
 
 const basicSoloEventSpecs = [
-  //{eventType: "beginMajorWork", tags: ["artistic", "major"]}
+  //{eventType: "beginMajorWork", tags: ["artistic", "major"]},
+  {eventType: "createMinorWork", tags: ["artistic", "positive"]},
+  {eventType: "receivePoorReview", tags: ["artistic", "negative"]},
+  {eventType: "receiveGoodReview", tags: ["artistic", "positive"]},
+  {eventType: "receiveAward", tags: ["artistic", "positive", "major"]}
 ];
 
 const basicDyadicEventSpecs = [
@@ -43,10 +47,38 @@ const authorGoalTemplates = [
     pattern:
     `(pattern establishGrudge
        (event ?e1 where tag: unfriendly, actor: ?c2, target: ?c1)
-       (event ?e2 where eventType: formGrudge, actor: ?c1, target: ?c2))`,
+       (event ?e2 where eventType: formGrudge, actor: ?c1, target: ?c2)
+       (unless-event where eventType: abandonGrudge, actor: ?c1, target: ?c2))`,
     stages: [
       "?c2 is unfriendly to ?c1",
       "?c1 forms a grudge on ?c2"
+    ]
+  },
+  {
+    name: "establishMutualGrudge",
+    pattern:
+    `(pattern establishMutualGrudge
+       (event ?e1 where eventType: formGrudge, actor: ?c1, target: ?c2)
+       (event ?e2 where eventType: formGrudge, actor: ?c2, target: ?c1)
+       (unless-event where eventType: abandonGrudge, actor: ?c1, target: ?c2))`,
+    stages: [
+      "?c1 forms a grudge on ?c2",
+      "?c2 forms a grudge on ?c1"
+    ]
+  },
+  {
+    name: "grudgeFades",
+    pattern:
+    `(pattern grudgeFades
+       (event ?e1 where eventType: formGrudge, actor: ?c1, target: ?c2)
+       (event ?e2 where tag: friendly, actor: ?c2, target: ?c1)
+       (event ?e3 where eventType: abandonGrudge, actor: ?c1, target: ?c2)
+       (unless-event where eventType: formGrudge, actor: ?c2, target: ?c1))`,
+    stages: [
+      "?c1 forms a grudge on ?c2",
+      "?c2 is friendly to ?c1",
+      "?c1's grudge on ?c2 fades",
+      //"?c2 forms a grudge on ?c1"
     ]
   },
   {
@@ -94,7 +126,37 @@ const authorGoalTemplates = [
       "?c1 finishes another major work"
       //"?c2 finishes a major work first"
     ]
-  }
+  },
+  {
+    name: "quantityOverQuality",
+    pattern:
+    `(pattern quantityOverQuality
+       (event ?e1 where eventType: createMinorWork, actor: ?c1)
+       (event ?e2 where eventType: createMinorWork, actor: ?c1)
+       (event ?e3 where eventType: createMinorWork, actor: ?c1)
+       (event ?e4 where tag: artistic, tag: positive, actor: ?c1)
+       (unless-event where eventType: finishMajorWork, actor: ?c1))`,
+    stages: [
+      "?c1 creates a minor work",
+      "?c1 creates another minor work",
+      "?c1 creates yet another minor work",
+      "?c1 is rewarded with career success",
+      //"?c1 finishes a major work"
+    ]
+  },
+  {
+    name: "slowAndSteady",
+    pattern:
+    `(pattern slowAndSteady
+       (event ?e1 where eventType: finishMajorWork, actor: ?c1)
+       (event ?e2 where tag: artistic, tag: positive, actor: ?c1)
+       (unless-event where eventType: createMinorWork, actor: ?c1))`,
+    stages: [
+      "?c1 finishes a major work",
+      "?c1 is rewarded with career success",
+      //"?c2 creates a minor work"
+    ]
+  },
 ];
 
 function getAllCharIDs(db) {
@@ -169,7 +231,7 @@ function generatePossibleActions(goal) {
       return [];
     }
   }
-  else if (goal.pattern.name === "establishGrudge") {
+  else if (goal.pattern.name === "establishGrudge" && goal.lastStep !== "die") {
     if (goal.bindings["?e1"] && !goal.bindings["?e2"]) {
       return [{
         eventType: "formGrudge",
@@ -180,7 +242,10 @@ function generatePossibleActions(goal) {
     }
     else if (goal.bindings["?e2"]) {
       const enabledActions = [
-        {eventType: "sabotage", tags: ["career", "unfriendly", "harms", "major"]},
+        {
+          eventType: "sabotageLatestWork",
+          tags: ["artistic", "unfriendly", "harms", "negative", "major"]
+        },
         {eventType: "complainAboutGrudge", tags: ["complain", "negative", "minor"]},
         {eventType: "worryAboutGrudge", tags: ["worry", "negative", "minor"]},
       ];
@@ -189,6 +254,19 @@ function generatePossibleActions(goal) {
         template.target = goal.bindings["?c2"];
       });
       return enabledActions;
+    }
+    else {
+      return [];
+    }
+  }
+  else if (goal.pattern.name === "grudgeFades") {
+    if (goal.bindings["?e2"] && !goal.bindings["?e3"]) {
+      return [{
+        eventType: "abandonGrudge",
+        actor: goal.bindings["?c1"],
+        target: goal.bindings["?c2"],
+        tags: ["positive", "major"]
+      }];
     }
     else {
       return [];
