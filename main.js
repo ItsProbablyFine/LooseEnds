@@ -355,7 +355,7 @@ const schema = {
 };
 
 const allCharNames = [
-  "Aaron", "Bella", "Cam", "Devin", "Emily",
+  "Aidan", "Bella", "Cam", "Devin", "Emily",
   // spare names if we need extra
   "Adam", "Alex", "Alice", "Ann",
   "Ben", "Beth",
@@ -403,7 +403,7 @@ let appState = {
     return {
       name: char,
       situations: [
-        randNth(["wowchair", "firebrand", "slacker", "sycophant", "worrier"]),
+        randNth(["microcelebrity", "firebrand", "slacker", "sycophant", "worrier"]),
         "appreciates " + doesValue,
         "despises " + doesntValue
         //"likes " + likeTarget,
