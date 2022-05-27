@@ -61,6 +61,20 @@ const authorGoalTemplates = [
     ]
   },
   {
+    name: "supportStrugglingFriend",
+    pattern:
+    `(pattern supportStrugglingFriend
+       (event ?e1 where eventType: formFriendship, actor: ?c1, target: ?c2)
+       (event ?e2 where tag: worry, actor: ?c2)
+       (event ?e3 where tag: friendly, actor: ?c1, target: ?c2)
+       (unless-event where tag: unfriendly, actor: ?c1, target: ?c2))`,
+    stages: [
+      "?c1 befriends ?c2",
+      "?c2 worries about something",
+      "?c1 supports ?c2"
+    ]
+  },
+  {
     name: "establishGrudge",
     pattern:
     `(pattern establishGrudge
@@ -112,7 +126,8 @@ const authorGoalTemplates = [
     stages: [
       "?c1 forms a grudge on ?c3",
       "?c2 also forms a grudge on ?c3",
-      "?c1 and ?c2 bond over disliking ?c3"
+      "?c1 connects with ?c2 over disliking ?c3",
+      "?c2 keeps up the connection with ?c1"
     ]
   },
   {
@@ -169,7 +184,10 @@ const authorGoalTemplates = [
        (event ?e2 where eventType: createMinorWork, actor: ?c1)
        (event ?e3 where eventType: createMinorWork, actor: ?c1)
        (event ?e4 where tag: reception, tag: positive, actor: ?c1)
-       (unless-event where eventType: finishMajorWork, actor: ?c1))`,
+       (unless-event where eventType: finishMajorWork, actor: ?c1)
+       (unless-event between ?e3 ?e4 where tag: reception, tag: negative, actor: ?c1)
+       (unless-event between ?e3 ?e4 where
+         tag: reception, tag: positive, actor: ?c2, (not= ?c1 ?c2)))`,
     stages: [
       "?c1 creates a minor work",
       "?c1 creates another minor work",
