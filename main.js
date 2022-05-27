@@ -657,6 +657,10 @@ function applyUIEffect(effect, params) {
     if (!appState.suggestions[nextCursor]) nextCursor = 0;
     appState.suggestionsCursor = nextCursor;
   }
+  else if (effect === "showTopSuggestions") {
+    // reset the suggestions cursor back to the start of the list
+    appState.suggestionsCursor = 0;
+  }
 
   // goal UI effects
   else if (effect === "openGoalComposer") {
@@ -848,9 +852,15 @@ function rerenderUI(state) {
 function initiallyRenderUI(state) {
   // render the see-more-suggestions button
   ReactDOM.render(
-    e("div", {
-      onClick: ev => applyUIEffect("showMoreSuggestions", {})
-    }, "see more..."),
+    e("div", {},
+      e("span", {
+        onClick: ev => applyUIEffect("showMoreSuggestions", {})
+      }, "see more suggestions"),
+      e("span", {}, " • "),
+      e("span", {
+        onClick: ev => applyUIEffect("showTopSuggestions", {})
+      }, "back to top suggestions")
+    ),
     document.getElementById("suggestions-more")
   );
 
