@@ -519,7 +519,9 @@ function removeAuthorGoal(appState, goalID) {
 }
 
 function summarizeAuthorGoal(goal) {
-  return goal.pattern.name + "|" + Object.values(goal.bindings).join("|");
+  const nonEventKeys = Object.keys(goal.bindings).filter(k => !k.startsWith("?e")); // FIXME hacky
+  const nonEventVals = nonEventKeys.map(k => goal.bindings[k]);
+  return goal.pattern.name + "|" + nonEventVals.join("|");
 }
 
 function applyUIEffect(effect, params) {
@@ -584,6 +586,14 @@ function applyUIEffect(effect, params) {
       // skip to next background partial match if this bpm is already a goal
       const bpmSummary = summarizeAuthorGoal(bpm);
       if (goalSummaries.includes(bpmSummary)) continue;
+      // skip to next background partial match if this bpm is already a *prefix to* a goal
+      const relevantGoals = goalSummaries.filter(gs => gs.split("|")[0] === bpm.pattern.name);
+      const bpmBindingsSummary = bpmSummary.split("|").slice(1).join("|");
+      const furtherAdvancedGoal = relevantGoals.find(rg => {
+        const rgBindingsSummary = rg.split("|").slice(1).join("|");
+        return rgBindingsSummary.startsWith(bpmBindingsSummary);
+      });
+      if (furtherAdvancedGoal) continue;
       // skip to next background partial match if not enough progress on this one yet
       const numClauses = bpm.pattern.eventClauses.length;
       let numClausesBound = 0;
