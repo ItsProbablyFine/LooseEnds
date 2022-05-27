@@ -513,7 +513,8 @@ function refreshSuggestions() {
   // and secondarily by whether each suggestion is enabled by an active goal
   // (even if it doesn't advance any goals). FIXME Improve this.
   allSuggestions.sort((a, b) => {
-    const bScore = b.goalUpdates.length + (b.goal ? 0.5 : 0);
+    const randomOffset = Math.random();
+    const bScore = b.goalUpdates.length + (b.goal ? 0.5 : 0) + randomOffset;
     const aScore = a.goalUpdates.length + (a.goal ? 0.5 : 0);
     return bScore - aScore;
   });
