@@ -3,6 +3,7 @@
 const basicSoloEventSpecs = [
   //{eventType: "beginMajorWork", tags: ["artistic", "major"]},
   {eventType: "createMinorWork", tags: ["release", "artistic", "positive"]},
+  {eventType: "createManifesto", tags: ["release", "artistic", "positive"]},
   {eventType: "receivePoorReview", tags: ["reception", "artistic", "negative"]},
   {eventType: "receiveGoodReview", tags: ["reception", "artistic", "positive"]},
   {eventType: "receiveAward", tags: ["reception", "artistic", "positive", "major"]}
@@ -29,21 +30,36 @@ const basicDyadicEventSpecs = [
   {eventType: "inviteIntoGroup", tags: ["highStatus", "friendly", "helps"]},
   {eventType: "shunFromGroup", tags: ["highStatus", "unfriendly", "harms"]},
   {eventType: "apologizeTo", tags: ["friendly"]},
-  {eventType: "begForFavor", tags: ["lowStatus"]},
-  {eventType: "extortFavor", tags: ["highStatus"]},
-  {eventType: "callInFavor", tags: ["highStatus"]},
-  {eventType: "callInExtortionateFavor", tags: ["highStatus", "harms"]},
+  //{eventType: "begForFavor", tags: ["lowStatus"]},
+  //{eventType: "extortFavor", tags: ["highStatus"]},
+  //{eventType: "callInFavor", tags: ["highStatus"]},
+  //{eventType: "callInExtortionateFavor", tags: ["highStatus", "harms"]},
   //{eventType: "playTheFool", tags: ["lowStatus", "friendly"]},
   //{eventType: "playRoyalty", tags: ["highStatus", "friendly"]},
   //{eventType: "neg", tags: ["highStatus", "romantic", "negative"]},
   {eventType: "askForHelp", tags: ["lowStatus", "friendly"]},
-  {eventType: "deferToExpertise", tags: ["career", "lowStatus"]},
-  {eventType: "noticeMeSenpai", tags: ["lowStatus", "romantic"]},
+  //{eventType: "deferToExpertise", tags: ["career", "lowStatus"]},
+  //{eventType: "noticeMeSenpai", tags: ["lowStatus", "romantic"]},
   //{eventType: "collab:phoneItIn", tags: ["career", "harms"]},
   //{eventType: "collab:goAboveAndBeyond", tags: ["career", "helps"]},
 ];
 
 const authorGoalTemplates = [
+  {
+    name: "establishFriendship",
+    pattern:
+    `(pattern establishFriendship
+       (event ?e1 where tag: friendly, actor: ?c1, target: ?c2)
+       (event ?e2 where tag: friendly, actor: ?c2, target: ?c1)
+       (event ?e3 where eventType: formFriendship, actor: ?c1, target: ?c2)
+       (unless-event where tag: unfriendly, actor: ?c1, target: ?c2)
+       (unless-event where tag: unfriendly, actor: ?c2, target: ?c1))`,
+    stages: [
+      "?c1 is friendly to ?c2",
+      "?c2 is friendly to ?c1",
+      "?c1 and ?c2 become friends"
+    ]
+  },
   {
     name: "establishGrudge",
     pattern:
@@ -81,6 +97,22 @@ const authorGoalTemplates = [
       "?c2 is friendly to ?c1",
       "?c1's grudge on ?c2 fades",
       //"?c2 forms a grudge on ?c1"
+    ]
+  },
+  {
+    name: "bondOverSharedDislike",
+    pattern:
+    `(pattern bondOverSharedDislike
+       (event ?e1 where eventType: formGrudge, actor: ?c1, target: ?c3)
+       (event ?e2 where eventType: formGrudge, actor: ?c2, target: ?c3)
+       (event ?e3 where tag: friendly, actor: ?c1, target: ?c2)
+       (event ?e4 where tag: friendly, actor: ?c2, target: ?c1)
+       (unless-event where eventType: abandonGrudge, actor: ?c1, target: ?c3)
+       (unless-event where eventType: abandonGrudge, actor: ?c2, target: ?c3))`,
+    stages: [
+      "?c1 forms a grudge on ?c3",
+      "?c2 also forms a grudge on ?c3",
+      "?c1 and ?c2 bond over disliking ?c3"
     ]
   },
   {
@@ -136,7 +168,7 @@ const authorGoalTemplates = [
        (event ?e1 where eventType: createMinorWork, actor: ?c1)
        (event ?e2 where eventType: createMinorWork, actor: ?c1)
        (event ?e3 where eventType: createMinorWork, actor: ?c1)
-       (event ?e4 where tag: artistic, tag: positive, actor: ?c1)
+       (event ?e4 where tag: reception, tag: positive, actor: ?c1)
        (unless-event where eventType: finishMajorWork, actor: ?c1))`,
     stages: [
       "?c1 creates a minor work",
@@ -151,7 +183,7 @@ const authorGoalTemplates = [
     pattern:
     `(pattern slowAndSteady
        (event ?e1 where eventType: finishMajorWork, actor: ?c1)
-       (event ?e2 where tag: artistic, tag: positive, actor: ?c1)
+       (event ?e2 where tag: reception, tag: positive, actor: ?c1)
        (unless-event where eventType: createMinorWork, actor: ?c1))`,
     stages: [
       "?c1 finishes a major work",
@@ -269,10 +301,11 @@ function generatePossibleActions(goal) {
       const enabledActions = [
         {
           eventType: "sabotageLatestWork",
-          tags: ["artistic", "unfriendly", "harms", "negative", "major"]
+          tags: ["artistic", "unfriendly", "harms", "major"]
         },
         {eventType: "complainAboutGrudge", tags: ["complain", "negative", "minor"]},
         {eventType: "worryAboutGrudge", tags: ["worry", "negative", "minor"]},
+        {eventType: "createDissWork", tags: ["release", "artistic", "unfriendly", "positive"]}
       ];
       enabledActions.forEach(template => {
         template.actor = goal.bindings["?c1"];
@@ -291,6 +324,19 @@ function generatePossibleActions(goal) {
         actor: goal.bindings["?c1"],
         target: goal.bindings["?c2"],
         tags: ["positive", "major"]
+      }];
+    }
+    else {
+      return [];
+    }
+  }
+  else if (goal.pattern.name === "establishFriendship" && goal.lastStep !== "die") {
+    if (goal.bindings["?e1"] && goal.bindings["?e2"] && !goal.bindings["?e3"]) {
+      return [{
+        eventType: "formFriendship",
+        actor: goal.bindings["?c1"],
+        target: goal.bindings["?c2"],
+        tags: ["positive", "friendly", "major"]
       }];
     }
     else {
